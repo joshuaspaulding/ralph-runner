@@ -1,0 +1,6 @@
+# Trading Guardrails — NEVER DELETE
+- Max 2% of total USDC balance per trade
+- Only trade markets with >$50k liquidity
+- Never trade during known resolution windows
+- If confidence <70, action=NONE
+- After 3 losing trades in a row, pause 1 hour and append new rule

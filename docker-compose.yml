@@ -1,0 +1,15 @@
+version: '3.9'
+
+services:
+  ralph:
+    build: .
+    container_name: ralph-${PROJECT_NAME:-default}
+    volumes:
+      - ${PROJECT_DIR:-./}:/workspace
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    command: ["ralph-loop"]
