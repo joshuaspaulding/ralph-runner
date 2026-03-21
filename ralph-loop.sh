@@ -38,7 +38,15 @@ while true; do
     --model claude-sonnet-4-6 2>/tmp/ralph_err
   exit_code=$?
 
-  [ $exit_code -ne 0 ] && capture_guardrail "claude invocation" "$(cat /tmp/ralph_err)"
+  if [ $exit_code -ne 0 ]; then
+    ERR=$(cat /tmp/ralph_err)
+    # Fatal API errors — no point retrying
+    if echo "$ERR" | grep -qiE "credit balance|invalid api key|authentication|billing"; then
+      echo "[fatal] API error: $ERR"
+      exit 1
+    fi
+    capture_guardrail "claude invocation" "$ERR"
+  fi
 
   echo "Iteration done. Sleeping 5s..."
   sleep 5

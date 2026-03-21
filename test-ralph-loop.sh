@@ -90,6 +90,15 @@ else
   pass "T5: post-loop bare 'git push' removed"
 fi
 
+# ── Test 5b: fatal API errors exit immediately ────────────────────────────
+# "Credit balance is too low" caused the loop to spin for hours.
+# The script should now detect fatal API errors and exit 1 immediately.
+if grep -qiE 'credit balance|invalid api key|authentication|billing' "$SCRIPT"; then
+  pass "T5b: fatal API error patterns detected — loop will exit instead of spinning"
+else
+  fail "T5b: no fatal API error handling — loop will spin forever on billing/auth errors"
+fi
+
 # ── Test 6: capture_guardrail SHA deduplication ───────────────────────────
 # Same error should not append a new guardrail on every iteration.
 W3=$(mkworkspace)
