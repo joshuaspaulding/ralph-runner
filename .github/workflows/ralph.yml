@@ -47,5 +47,5 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
-        working-directory: $HOME/workspace
+        working-directory: ${{ env.HOME }}/workspace
         run: bash $GITHUB_WORKSPACE/ralph-loop.sh
