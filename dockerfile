@@ -6,10 +6,11 @@ RUN curl -fsSL https://claude.ai/install.sh | bash
 WORKDIR /workspace
 
 COPY ralph-loop.sh /usr/local/bin/ralph-loop
-RUN chmod +x /usr/local/bin/ralph-loop
+COPY ralph-entrypoint.sh /usr/local/bin/ralph-entrypoint
+RUN chmod +x /usr/local/bin/ralph-loop /usr/local/bin/ralph-entrypoint
 
-RUN mkdir -p /workspace/.ralph
+# Default .ralph config — used when target repo has none
+COPY .ralph/PROMPT.md /ralph-defaults/PROMPT.md
+COPY .ralph/guardrails.md /ralph-defaults/guardrails.md
 
-VOLUME /workspace
-
-CMD ["/usr/local/bin/ralph-loop"]
+ENTRYPOINT ["/usr/local/bin/ralph-entrypoint"]

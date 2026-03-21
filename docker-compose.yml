@@ -9,7 +9,8 @@ services:
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - GITHUB_TOKEN=${GITHUB_TOKEN}
+      # Set PROJECT_REPO to clone a remote repo instead of using the volume mount
+      - PROJECT_REPO=${PROJECT_REPO:-}
     restart: unless-stopped
     stdin_open: true
     tty: true
-    command: ["ralph-loop"]
