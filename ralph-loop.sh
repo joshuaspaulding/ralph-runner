@@ -35,17 +35,18 @@ while true; do
 
   cat .ralph/PROMPT.md | claude \
     --dangerously-skip-permissions \
-    --model claude-sonnet-4-6 2>/tmp/ralph_err
-  exit_code=$?
+    --model claude-sonnet-4-6 2>&1 | tee /tmp/ralph_out
+  exit_code=${PIPESTATUS[1]}
+
+  OUT=$(cat /tmp/ralph_out)
+  # Fatal API errors — no point retrying, exit immediately
+  if echo "$OUT" | grep -qiE "credit balance|invalid api key|authentication|billing"; then
+    echo "[fatal] API error — stopping loop"
+    exit 1
+  fi
 
   if [ $exit_code -ne 0 ]; then
-    ERR=$(cat /tmp/ralph_err)
-    # Fatal API errors — no point retrying
-    if echo "$ERR" | grep -qiE "credit balance|invalid api key|authentication|billing"; then
-      echo "[fatal] API error: $ERR"
-      exit 1
-    fi
-    capture_guardrail "claude invocation" "$ERR"
+    capture_guardrail "claude invocation" "$OUT"
   fi
 
   echo "Iteration done. Sleeping 5s..."
