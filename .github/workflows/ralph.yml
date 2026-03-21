@@ -1,0 +1,51 @@
+name: Ralph
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: 'Target repo (org/repo)'
+        required: true
+        type: string
+
+jobs:
+  ralph:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360  # 6 hour hard cap
+
+    steps:
+      - name: Checkout ralph-runner
+        uses: actions/checkout@v4
+
+      - name: Install claude-code
+        run: curl -fsSL https://claude.ai/install.sh | bash
+
+      - name: Clone target repo
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          REPO="${{ inputs.repo }}"
+          REPO="${REPO#https://github.com/}"
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" /workspace
+          cd /workspace
+          git config user.email "ralph@ralph-runner"
+          git config user.name "Ralph"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+
+      - name: Copy default .ralph config if repo has none
+        run: |
+          if [ ! -f /workspace/.ralph/PROMPT.md ]; then
+            mkdir -p /workspace/.ralph
+            cp .ralph/PROMPT.md /workspace/.ralph/PROMPT.md
+          fi
+          if [ ! -f /workspace/.ralph/guardrails.md ]; then
+            mkdir -p /workspace/.ralph
+            cp .ralph/guardrails.md /workspace/.ralph/guardrails.md
+          fi
+
+      - name: Run Ralph
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+        working-directory: /workspace
+        run: bash $GITHUB_WORKSPACE/ralph-loop.sh
