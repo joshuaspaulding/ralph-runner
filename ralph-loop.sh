@@ -25,19 +25,12 @@ while true; do
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo "Starting fresh Ralph iteration..."
 
-  output=$(cat .ralph/PROMPT.md | claude-code \
+  cat .ralph/PROMPT.md | claude \
     --dangerously-skip-permissions \
-    --model claude-sonnet-4-6 \
-    --output-format json 2>/tmp/ralph_err)
+    --model claude-sonnet-4-6 2>/tmp/ralph_err
   exit_code=$?
 
-  [ $exit_code -ne 0 ] && capture_guardrail "claude-code invocation" "$(cat /tmp/ralph_err)"
-
-  git add -A && git commit -m "ralph: iteration complete [auto]" 2>/tmp/ralph_git_err \
-    || capture_guardrail "git commit" "$(cat /tmp/ralph_git_err)"
-
-  git push 2>/tmp/ralph_push_err \
-    || capture_guardrail "git push" "$(cat /tmp/ralph_push_err)"
+  [ $exit_code -ne 0 ] && capture_guardrail "claude invocation" "$(cat /tmp/ralph_err)"
 
   echo "Iteration done. Sleeping 5s..."
   sleep 5
