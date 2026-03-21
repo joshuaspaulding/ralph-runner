@@ -26,26 +26,26 @@ jobs:
         run: |
           REPO="${{ inputs.repo }}"
           REPO="${REPO#https://github.com/}"
-          git clone "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" /workspace
-          cd /workspace
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" "$HOME/workspace"
+          cd "$HOME/workspace"
           git config user.email "ralph@ralph-runner"
           git config user.name "Ralph"
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
 
       - name: Copy default .ralph config if repo has none
         run: |
-          if [ ! -f /workspace/.ralph/PROMPT.md ]; then
-            mkdir -p /workspace/.ralph
-            cp .ralph/PROMPT.md /workspace/.ralph/PROMPT.md
+          if [ ! -f $HOME/workspace/.ralph/PROMPT.md ]; then
+            mkdir -p $HOME/workspace/.ralph
+            cp .ralph/PROMPT.md $HOME/workspace/.ralph/PROMPT.md
           fi
-          if [ ! -f /workspace/.ralph/guardrails.md ]; then
-            mkdir -p /workspace/.ralph
-            cp .ralph/guardrails.md /workspace/.ralph/guardrails.md
+          if [ ! -f $HOME/workspace/.ralph/guardrails.md ]; then
+            mkdir -p $HOME/workspace/.ralph
+            cp .ralph/guardrails.md $HOME/workspace/.ralph/guardrails.md
           fi
 
       - name: Run Ralph
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
-        working-directory: /workspace
+        working-directory: $HOME/workspace
         run: bash $GITHUB_WORKSPACE/ralph-loop.sh
