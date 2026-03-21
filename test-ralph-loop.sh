@@ -62,14 +62,23 @@ else
   pass "T3: no --output-format flag"
 fi
 
-# ── Test 4: post-loop 'git add -A && git commit' removed from script ──────
+# ── Test 4: loop exits when no open issues ───────────────────────────────
+# ralph-loop.sh should check for open issues before each iteration and
+# exit 0 when none exist, so the GitHub Actions job completes cleanly.
+if grep -q 'gh issue list.*--state open' "$SCRIPT" && grep -q 'exit 0' "$SCRIPT"; then
+  pass "T4: loop exits cleanly when no open issues"
+else
+  fail "T4: loop has no early-exit for zero open issues — will spin forever"
+fi
+
+# ── Test 4b: post-loop 'git add -A && git commit' removed from script ─────
 # The old code ran `git add -A && git commit` after every iteration, which
 # failed on clean trees (false guardrail) and could commit to main on early
 # exit. Fix: remove it — Ralph commits its own work via PROMPT.md.
 if grep -q 'git add -A' "$SCRIPT"; then
-  fail "T4: 'git add -A' still present in ralph-loop.sh — post-loop commit bug not fixed"
+  fail "T4b: 'git add -A' still present in ralph-loop.sh — post-loop commit bug not fixed"
 else
-  pass "T4: post-loop 'git add -A && git commit' removed"
+  pass "T4b: post-loop 'git add -A && git commit' removed"
 fi
 
 # ── Test 5: post-loop 'git push' removed from script ────────────────────

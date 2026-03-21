@@ -23,7 +23,15 @@ capture_guardrail() {
 
 while true; do
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "Starting fresh Ralph iteration..."
+
+  # Exit cleanly if there are no open issues
+  OPEN_ISSUES=$(gh issue list --state open --json number --jq length 2>/dev/null)
+  if [ "${OPEN_ISSUES:-0}" -eq 0 ]; then
+    echo "No open issues. Ralph is done."
+    exit 0
+  fi
+
+  echo "Starting fresh Ralph iteration ($OPEN_ISSUES open issue(s))..."
 
   cat .ralph/PROMPT.md | claude \
     --dangerously-skip-permissions \
