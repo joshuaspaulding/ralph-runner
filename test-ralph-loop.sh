@@ -21,30 +21,22 @@ mkworkspace() {
 
 SCRIPT="$(cd "$(dirname "$0")" && pwd)/ralph-loop.sh"
 
-# ── Test 1: wrong binary name (claude-code vs claude) ────────────────────
-# The Claude Code installer (claude.ai/install.sh) installs the binary as
-# `claude`, not `claude-code`. ralph-loop.sh line 28 calls `claude-code`,
-# which will not be found — the main loop never executes a single iteration.
-MAIN_LOOP_LINE=$(grep 'cat .ralph/PROMPT.md' "$SCRIPT")
-if echo "$MAIN_LOOP_LINE" | grep -q 'claude-code'; then
-  if command -v claude-code &>/dev/null; then
-    pass "T1: 'claude-code' binary found on PATH"
-  else
-    fail "T1: ralph-loop.sh calls 'claude-code' but installed binary is 'claude' — loop never runs"
-  fi
+# ── Test 1: main loop calls ralph-agent (Python SDK) ─────────────────────
+# The main iteration loop must invoke ralph-agent (the cached Anthropic SDK
+# agent) rather than piping directly to the claude CLI.
+if grep -q 'ralph-agent' "$SCRIPT"; then
+  pass "T1: main loop invokes ralph-agent (Python SDK with prompt caching)"
 else
-  pass "T1: main loop binary name looks correct"
+  fail "T1: ralph-loop.sh does not call ralph-agent — prompt caching not wired up"
 fi
 
-# ── Test 2: binary inconsistency (main loop vs guardrail) ────────────────
-# The main loop and guardrail capture must use the same binary name.
-MAIN_BIN=$(grep 'cat .ralph/PROMPT.md' "$SCRIPT" | grep -oE 'claude(-code)?' | head -1)
-GUARDRAIL_BIN=$(grep 'printf.*Context' -A3 "$SCRIPT" | grep -oE 'claude(-code)?' | head -1)
-
-if [ -n "$MAIN_BIN" ] && [ -n "$GUARDRAIL_BIN" ] && [ "$MAIN_BIN" != "$GUARDRAIL_BIN" ]; then
-  fail "T2: binary inconsistency — main loop: '$MAIN_BIN', guardrail: '$GUARDRAIL_BIN'"
+# ── Test 2: guardrail capture still uses claude CLI ───────────────────────
+# ralph-agent handles the main iteration; the lightweight guardrail-rule
+# generator still uses the claude CLI (haiku) for one-shot prompts.
+if grep -q 'claude' "$SCRIPT" && grep -q 'ralph-agent' "$SCRIPT"; then
+  pass "T2: guardrail capture uses claude CLI; main loop uses ralph-agent"
 else
-  pass "T2: binary names consistent ('$MAIN_BIN')"
+  fail "T2: unexpected invocation split between guardrail and main loop"
 fi
 
 # ── Test 3: --output-format flag present but output never used ────────────

@@ -33,10 +33,8 @@ while true; do
 
   echo "Starting fresh Ralph iteration ($OPEN_ISSUES open issue(s))..."
 
-  cat .ralph/PROMPT.md | claude \
-    --dangerously-skip-permissions \
-    --model claude-sonnet-4-6 2>&1 | tee /tmp/ralph_out
-  exit_code=${PIPESTATUS[1]}
+  python3 /usr/local/bin/ralph-agent 2>&1 | tee /tmp/ralph_out
+  exit_code=${PIPESTATUS[0]}
 
   OUT=$(cat /tmp/ralph_out)
   # Fatal API errors — no point retrying, exit immediately
