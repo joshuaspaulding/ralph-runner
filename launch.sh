@@ -41,7 +41,7 @@ for f in PROMPT.md guardrails.md; do
 done
 
 echo "[ralph] Starting container for ${REPO}..."
-docker run --rm \
+podman run --rm \
   --name "ralph-${SLUG}-$$" \
   -e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
   -e GITHUB_TOKEN="$GH_TOKEN" \

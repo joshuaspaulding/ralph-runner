@@ -36,7 +36,7 @@ stop:
 deploy-claw:
 	ssh $(CLAW) "sudo mkdir -p $(CLAW_DIR) && sudo chown josh:josh $(CLAW_DIR)"
 	rsync -av --exclude='.git' --exclude='.ruff_cache' . $(CLAW):$(CLAW_DIR)/
-	ssh $(CLAW) "cd $(CLAW_DIR) && docker build -t ralph-runner -f dockerfile ."
+	ssh $(CLAW) "cd $(CLAW_DIR) && podman build -t ralph-runner -f dockerfile ."
 	ssh $(CLAW) "mkdir -p ~/.ralph/repos && touch ~/.ralph/config"
 	@echo ""
 	@echo "Deployed to $(CLAW):$(CLAW_DIR)"
