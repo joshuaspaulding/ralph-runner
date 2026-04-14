@@ -117,6 +117,112 @@ else
   fail "T7: GITHUB_TOKEN missing from workflow — all gh commands will fail"
 fi
 
+# ── Mock infrastructure (shared by T8–T10) ────────────────────────────────
+# Creates a temp bin dir with fake gh, python3, claude, and sleep binaries.
+# Issue JSON is read from /tmp/mock_gh_issues at runtime.
+# Agent exit code is read from /tmp/mock_agent_exit (default 0).
+# Agent stdout is read from /tmp/mock_agent_output (default empty).
+create_mockbin() {
+  local mb; mb=$(mktemp -d); TMPDIR_LIST+=("$mb")
+
+  # sleep: instant no-op
+  printf '#!/bin/bash\n' > "$mb/sleep"; chmod +x "$mb/sleep"
+
+  # claude: return a canned guardrail rule (used by capture_guardrail)
+  printf '#!/bin/bash\necho "Never repeat that error."\n' > "$mb/claude"; chmod +x "$mb/claude"
+
+  # gh: emit JSON from /tmp/mock_gh_issues; apply --jq filter if present
+  cat > "$mb/gh" << 'GHEOF'
+#!/bin/bash
+JSON=$(cat /tmp/mock_gh_issues 2>/dev/null || echo '[]')
+JQ_ARG=""; prev=""
+for arg in "$@"; do
+  [ "$prev" = "--jq" ] && JQ_ARG="$arg"
+  prev="$arg"
+done
+if [ -n "$JQ_ARG" ]; then echo "$JSON" | jq -r "$JQ_ARG"
+else echo "$JSON"; fi
+GHEOF
+  chmod +x "$mb/gh"
+
+  # python3: exit code from /tmp/mock_agent_exit, stdout from /tmp/mock_agent_output
+  cat > "$mb/python3" << 'PYEOF'
+#!/bin/bash
+cat /tmp/mock_agent_output 2>/dev/null || true
+exit "$(cat /tmp/mock_agent_exit 2>/dev/null || echo 0)"
+PYEOF
+  chmod +x "$mb/python3"
+
+  echo "$mb"
+}
+
+# Source only the function definitions from ralph-loop.sh (not the while loop).
+source <(sed '/^while true/,$ d' "$SCRIPT")
+
+# ── Test 8: ralph/in-review issues excluded from count ────────────────────
+MOCKBIN_T8=$(create_mockbin)
+echo '[{"number":42,"title":"t","labels":[{"name":"ralph/in-review"}],"body":"","assignees":[]}]' \
+  > /tmp/mock_gh_issues
+SKIP_ISSUES=""
+T8_COUNT=$(PATH="$MOCKBIN_T8:$PATH" count_actionable_issues)
+if [ "${T8_COUNT}" = "0" ]; then
+  pass "T8: ralph/in-review issue excluded from actionable count"
+else
+  fail "T8: expected count=0 for ralph/in-review issue, got $T8_COUNT"
+fi
+
+# ── Test 8b: issue in SKIP_ISSUES excluded from count ─────────────────────
+echo '[{"number":42,"title":"t","labels":[],"body":"","assignees":[]}]' > /tmp/mock_gh_issues
+SKIP_ISSUES=" 42"
+T8B_COUNT=$(PATH="$MOCKBIN_T8:$PATH" count_actionable_issues)
+SKIP_ISSUES=""
+if [ "${T8B_COUNT}" = "0" ]; then
+  pass "T8b: issue in SKIP_ISSUES excluded from actionable count"
+else
+  fail "T8b: expected count=0 for skipped issue, got $T8B_COUNT"
+fi
+
+# ── Test 9: consecutive failure counter exits after MAX_FAILURES ──────────
+MOCKBIN_T9=$(create_mockbin)
+WS_T9=$(mktemp -d); TMPDIR_LIST+=("$WS_T9")
+mkdir -p "$WS_T9/.ralph"
+echo "# Guardrails" > "$WS_T9/.ralph/guardrails.md"
+
+# Agent fails with no branch output (tests consecutive-failure path only)
+echo 1 > /tmp/mock_agent_exit
+echo "agent error: something went wrong" > /tmp/mock_agent_output
+echo '[{"number":99,"title":"t","labels":[],"body":"","assignees":[]}]' > /tmp/mock_gh_issues
+
+T9_OUT=$(cd "$WS_T9" && PATH="$MOCKBIN_T9:$PATH" timeout 20 bash "$SCRIPT" 2>&1)
+T9_EXIT=$?
+if echo "$T9_OUT" | grep -q "consecutive failures — stopping" && [ "$T9_EXIT" -eq 1 ]; then
+  pass "T9: consecutive failure counter exits loop after MAX_FAILURES"
+else
+  fail "T9: expected '[ralph] 3 consecutive failures' and exit 1 — got exit=$T9_EXIT, out=$(echo "$T9_OUT" | tail -3)"
+fi
+
+# ── Test 10: per-issue skip after MAX_ISSUE_FAILURES ─────────────────────
+MOCKBIN_T10=$(create_mockbin)
+WS_T10=$(mktemp -d); TMPDIR_LIST+=("$WS_T10")
+mkdir -p "$WS_T10/.ralph"
+echo "# Guardrails" > "$WS_T10/.ralph/guardrails.md"
+
+# Agent fails and outputs a branch creation line so issue 42 is tracked
+echo 1 > /tmp/mock_agent_exit
+printf '[tool:bash] {"command": "git checkout -b ralph/42-test-issue"}\nagent error\n' \
+  > /tmp/mock_agent_output
+echo '[{"number":42,"title":"t","labels":[],"body":"","assignees":[]}]' > /tmp/mock_gh_issues
+
+T10_OUT=$(cd "$WS_T10" && PATH="$MOCKBIN_T10:$PATH" timeout 20 bash "$SCRIPT" 2>&1)
+if echo "$T10_OUT" | grep -q "issue #42 failed"; then
+  pass "T10: per-issue failure tracking emits skip message for issue #42"
+else
+  fail "T10: expected 'issue #42 failed' in output — got: $(echo "$T10_OUT" | tail -5)"
+fi
+
+# Cleanup mock control files
+rm -f /tmp/mock_gh_issues /tmp/mock_agent_exit /tmp/mock_agent_output
+
 # ── Summary ───────────────────────────────────────────────────────────────
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
