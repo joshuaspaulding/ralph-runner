@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Usage: launch.sh <org/repo>
 # Clones repo, applies config overrides, runs ralph-runner Docker container.
-# Credentials: sources ~/.hermes/.env (shared with openclaw/hermes), then
+# Credentials: sources ~/.hermes/.env (shared with hermes), then
 # ~/.ralph/config for overrides or GH_TOKEN if not set by hermes.
 set -euo pipefail
 
@@ -37,7 +37,7 @@ cd "$WORKDIR"
 git config user.email "ralph@ralph-runner"
 git config user.name "Ralph"
 
-# Config resolution: repo-local > per-repo override on claw > ralph-runner defaults
+# Config resolution: repo-local > per-repo override on deploy host > ralph-runner defaults
 RALPH_RUNNER_DIR="$(cd "$(dirname "$0")" && pwd)"
 for f in PROMPT.md guardrails.md; do
   if [ ! -f ".ralph/$f" ]; then

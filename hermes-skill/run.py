@@ -24,7 +24,7 @@ def run(repo: str) -> str:
     """
     launch = RALPH_RUNNER / "launch.sh"
     if not launch.exists():
-        return f"[error] launch.sh not found at {launch} — run 'make deploy-claw' first"
+        return f"[error] launch.sh not found at {launch} — run 'make deploy' first"
 
     result = subprocess.run(
         [str(launch), repo],

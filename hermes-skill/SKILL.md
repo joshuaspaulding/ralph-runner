@@ -29,9 +29,9 @@ If the user omits the org (e.g. "run ralph on myrepo"), ask: "Which org is that 
 
 ## What it does
 
-1. Clones the target repo to a temporary workspace on the claw server
+1. Clones the target repo to a temporary workspace on the remote host
 2. Applies any per-repo prompt/guardrail overrides from `~/.ralph/repos/<org>/<repo>/`
-3. Runs the `ralph-runner` Docker container — Ralph iterates until all open issues have PRs
+3. Runs the `ralph-runner` container — Ralph iterates until all open issues have PRs
 4. Reports back with a summary of what Ralph did (last ~2000 chars of output)
 
 Takes anywhere from 1 minute (no open issues) to 30+ minutes depending on issue count.
@@ -43,7 +43,7 @@ Stream progress to the user if possible; otherwise report the final output summa
 
 If the run fails (non-zero exit):
 - Check the output for "credit balance" or "billing" → tell the user to top up their Anthropic account
-- Check for "invalid api key" → tell the user to update `ANTHROPIC_API_KEY` in `~/.ralph/config` on claw
+- Check for "invalid api key" → tell the user to update `ANTHROPIC_API_KEY` in `~/.ralph/config`
 - Otherwise report the tail of the error output
 
 ## Per-repo configuration
@@ -58,5 +58,5 @@ mkdir -p ~/.ralph/repos/org/repo
 
 Config resolution order (first found wins):
 1. `.ralph/PROMPT.md` already committed in the target repo
-2. `~/.ralph/repos/<org>/<repo>/PROMPT.md` on claw (your override)
+2. `~/.ralph/repos/<org>/<repo>/PROMPT.md` on the deploy host (your override)
 3. `/opt/ralph-runner/.ralph/PROMPT.md` (ralph-runner defaults)
