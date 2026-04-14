@@ -39,6 +39,11 @@ TASK SOURCE: GitHub Issues (single source of truth).
 - After committing, push the branch and open a PR: `gh pr create --title "..." --body "Closes #<issue-number>"`
 - PR body must reference the issue number so it auto-closes on merge.
 - Do not merge your own PR.
+- After the PR is open, label the issue so the loop won't re-attempt it:
+  ```
+  gh label create "ralph/in-review" --color 0075ca --description "Ralph has an open PR for this" 2>/dev/null || true
+  gh issue edit <issue-number> --add-label "ralph/in-review"
+  ```
 
 ## Done
 

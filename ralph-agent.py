@@ -28,6 +28,8 @@ RALPH_DIR = os.path.join(WORKSPACE, ".ralph")
 PREV_OUTPUT_FILE = "/tmp/ralph_out"
 MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-6")
 MAX_TOKENS = int(os.environ.get("RALPH_MAX_TOKENS", "8192"))
+MAX_TURNS = int(os.environ.get("RALPH_MAX_TURNS", "20"))
+MAX_TOOL_OUTPUT = int(os.environ.get("RALPH_MAX_TOOL_OUTPUT", "2000"))
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -130,12 +132,16 @@ TOOLS = [
 
 def _dispatch(name: str, inp: dict) -> str:
     if name == "bash":
-        return tool_bash(inp["command"])
-    if name == "read_file":
-        return tool_read_file(inp["path"])
-    if name == "write_file":
-        return tool_write_file(inp["path"], inp["content"])
-    return f"[error] unknown tool: {name}"
+        result = tool_bash(inp["command"])
+    elif name == "read_file":
+        result = tool_read_file(inp["path"])
+    elif name == "write_file":
+        result = tool_write_file(inp["path"], inp["content"])
+    else:
+        return f"[error] unknown tool: {name}"
+    if len(result) > MAX_TOOL_OUTPUT:
+        result = f"[...truncated, showing last {MAX_TOOL_OUTPUT} chars...]\n" + result[-MAX_TOOL_OUTPUT:]
+    return result
 
 
 # ── prompt assembly ──────────────────────────────────────────────────────────
@@ -188,11 +194,23 @@ def build_user_message() -> str:
             prev = "[...truncated...]\n" + prev[-3000:]
         parts.append(f"## Previous Iteration Output\n\n```\n{prev.strip()}\n```\n")
 
-    issues = tool_bash(
+    issues_raw = tool_bash(
         "gh issue list --state open "
         "--json number,title,body,assignees,labels 2>/dev/null"
     )
-    parts.append(f"## Current Open Issues\n\n{issues}\n")
+    # Filter out issues ralph/in-review (PR already open) and locally-skipped issues
+    skip_issues = set(os.environ.get("RALPH_SKIP_ISSUES", "").split())
+    try:
+        issues_data = json.loads(issues_raw)
+        issues_data = [
+            i for i in issues_data
+            if "ralph/in-review" not in [lbl["name"] for lbl in i.get("labels", [])]
+            and str(i["number"]) not in skip_issues
+        ]
+        issues_raw = json.dumps(issues_data, indent=2)
+    except (json.JSONDecodeError, KeyError):
+        pass  # use raw output as-is if JSON parsing fails
+    parts.append(f"## Current Open Issues\n\n{issues_raw}\n")
 
     parts.append(
         "Begin your iteration. Follow the instructions in the system prompt exactly."
@@ -208,7 +226,12 @@ def run() -> int:
     system_blocks = build_system()
     messages: list[dict] = [{"role": "user", "content": build_user_message()}]
 
+    turn = 0
     while True:
+        turn += 1
+        if turn > MAX_TURNS:
+            print(f"[fatal] exceeded MAX_TURNS ({MAX_TURNS}) — stopping", flush=True)
+            return 1
         try:
             response = client.messages.create(
                 model=MODEL,
