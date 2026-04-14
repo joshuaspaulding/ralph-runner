@@ -1,0 +1,15 @@
+# Credentials and local config
+.env
+.env.*
+.ralph/config
+.ralph/repos/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.ruff_cache/
+
+# Temp / test artifacts
+/tmp/
+*.log

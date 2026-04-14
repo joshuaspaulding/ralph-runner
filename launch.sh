@@ -6,6 +6,11 @@
 set -euo pipefail
 
 REPO="${1:?Usage: launch.sh <org/repo>}"
+REPO="${REPO#https://github.com/}"
+if [[ ! "$REPO" =~ ^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$ ]]; then
+  echo "[ralph] Invalid repo: must be org/repo (got: $REPO)" >&2
+  exit 1
+fi
 SLUG="${REPO//\//-}"
 CONFIG_DIR="$HOME/.ralph"
 WORKDIR="$(mktemp -d "/tmp/ralph-${SLUG}-XXXXXX")"
@@ -24,11 +29,13 @@ cleanup() { rm -rf "$WORKDIR"; }
 trap cleanup EXIT
 
 echo "[ralph] Cloning ${REPO} into ${WORKDIR}..."
-git clone "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" "$WORKDIR"
+# Use gh credential helper — token never stored in .git/config or clone URLs
+export GITHUB_TOKEN="$GH_TOKEN"
+git config --global credential.helper '!gh auth git-credential'
+git clone "https://github.com/${REPO}.git" "$WORKDIR"
 cd "$WORKDIR"
 git config user.email "ralph@ralph-runner"
 git config user.name "Ralph"
-git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
 
 # Config resolution: repo-local > per-repo override on claw > ralph-runner defaults
 RALPH_RUNNER_DIR="$(cd "$(dirname "$0")" && pwd)"

@@ -23,14 +23,18 @@ jobs:
       - name: Clone target repo
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
+          INPUT_REPO: ${{ inputs.repo }}
         run: |
-          REPO="${{ inputs.repo }}"
-          REPO="${REPO#https://github.com/}"
-          git clone "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" "$HOME/workspace"
-          cd "$HOME/workspace"
-          git config user.email "ralph@ralph-runner"
-          git config user.name "Ralph"
-          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+          # Read repo from env var — never interpolate ${{ }} directly into shell
+          REPO="${INPUT_REPO#https://github.com/}"
+          if [[ ! "$REPO" =~ ^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$ ]]; then
+            echo "Invalid repo format: '$REPO'" && exit 1
+          fi
+          # Use gh credential helper — token never stored in .git/config or URLs
+          git config --global credential.helper '!gh auth git-credential'
+          git clone "https://github.com/${REPO}.git" "$HOME/workspace"
+          git -C "$HOME/workspace" config user.email "ralph@ralph-runner"
+          git -C "$HOME/workspace" config user.name "Ralph"
 
       - name: Copy default .ralph config if repo has none
         run: |

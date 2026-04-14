@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Use GITHUB_TOKEN via gh credential helper so the token is never stored
+# in .git/config or embedded in remote URLs.
+git config --global credential.helper '!gh auth git-credential'
+
 GUARDRAILS=".ralph/guardrails.md"
 MAX_FAILURES=3        # consecutive failures before stopping the run
 MAX_ISSUE_FAILURES=3  # per-issue failures before skipping for this run
