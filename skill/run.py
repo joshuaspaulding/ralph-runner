@@ -1,7 +1,7 @@
 """
-ralph hermes skill — run.py
+ralph skill — run.py
 
-Called by Hermes when the user triggers the ralph skill.
+Called by the assistant when the user triggers the ralph skill.
 Invokes launch.sh <org/repo>, captures output, returns a summary.
 """
 

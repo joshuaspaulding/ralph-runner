@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Usage: launch.sh <org/repo>
 # Clones repo, applies config overrides, runs ralph-runner Docker container.
-# Credentials: sources ~/.hermes/.env (shared with hermes), then
-# ~/.ralph/config for overrides or GH_TOKEN if not set by hermes.
+# Credentials: sources ASSISTANT_ENV file first (shared credentials store),
+# then ~/.ralph/config for ralph-specific overrides.
 set -euo pipefail
 
 REPO="${1:?Usage: launch.sh <org/repo>}"
@@ -15,14 +15,15 @@ SLUG="${REPO//\//-}"
 CONFIG_DIR="$HOME/.ralph"
 WORKDIR="$(mktemp -d "/tmp/ralph-${SLUG}-XXXXXX")"
 
-# Load credentials — hermes .env first (has ANTHROPIC_API_KEY), then ralph
+# Load credentials — shared env file first (ANTHROPIC_API_KEY), then ralph
 # config for anything not already set (e.g. GH_TOKEN).
+ASSISTANT_ENV="${ASSISTANT_ENV:-$HOME/.hermes/.env}"
 # shellcheck source=/dev/null
-[ -f "$HOME/.hermes/.env" ] && source "$HOME/.hermes/.env"
+[ -f "$ASSISTANT_ENV" ] && source "$ASSISTANT_ENV"
 # shellcheck source=/dev/null
 [ -f "$CONFIG_DIR/config" ] && source "$CONFIG_DIR/config"
 
-: "${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY not set — add to ~/.hermes/.env or ~/.ralph/config}"
+: "${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY not set — add to ~/.ralph/config}"
 : "${GH_TOKEN:?GH_TOKEN not set — add to ~/.ralph/config}"
 
 cleanup() { rm -rf "$WORKDIR"; }
